@@ -9,7 +9,7 @@ Several improvements implemented by borja@libcrack.so:
 
 1. PEP8 code refactorisation
 2. Python2/Python3 detection
-3. Usage of requests library instead of the old httplib2
+3. Usage of requests library instead of the old httplib & urllib2
 
 ### Powered by: SecNiche Security Labs
 
