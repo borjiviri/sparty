@@ -1,5 +1,7 @@
-# Sparty - Sharepoint/Frontpage Auditing Tool
-Authored by: Aditya K Sood |{0kn0ck}@secniche.org | @AdityaKSood | 2013
+# Sparty - Sharepoint/Frontpage Pentest
+
+* Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
+* Modified by: borja@libcrack.so | @borjiviri | 2015
 
 ## Powered by: SecNiche Security Labs
 
@@ -7,14 +9,14 @@ Sparty is an open source tool written in python to audit web applications using 
 
 ### Functionalities and capabilities
 
-1. Sharepoint and Frontpage Version Detection!
-2. Dumping Password from Exposed Configuration Files!
-3. Exposed Sharepoint/Frontpage Services Scan!
-4. Exposed Directory Check!
-5. Installed File and Access Rights Check!
-6. RPC Service Querying!
-7. File Enumeration!
-8. File Uploading Check!
+1. Sharepoint and Frontpage Version Detection
+2. Dumping Password from Exposed Configuration Files
+3. Exposed Sharepoint/Frontpage Services Scan
+4. Exposed Directory Check
+5. Installed File and Access Rights Check
+6. RPC Service Querying
+7. File Enumeration
+8. File Uploading Check
 
 ### Additional notes about working and design
 
@@ -28,11 +30,12 @@ Sparty is an open source tool written in python to audit web applications using 
 2. This version uses following libraries:
 
 ```python
-        import urllib2
-        import re
-        import os, sys
-        import optparse
-        import httplib
+import re
+import os
+import sys
+import urllib2
+import httplib
+import optparse
 ```
 
 ### Things to take care of while using sparty
@@ -41,7 +44,7 @@ Please take this into consideration:
 
 1. Always specify https | http explicitly
 2. Always provide the proper directory structure where sharepoint/frontpage is installed
-3. Do not specify '/' at the end of url
+3. Do not specify `/` at the end of url
 
 ### Sparty Help
 
