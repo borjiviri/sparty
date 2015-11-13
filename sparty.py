@@ -5,7 +5,12 @@
 # Updated/Bugfixes by: Borja R - https://www.libcrack.so/
 
 import os
+import re
 import sys
+import logging
+import urllib2
+import httplib
+import optparse
 
 # Frontend (bin) repository files
 
@@ -171,34 +176,7 @@ sharepoint_target_layout = []
 sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
-# verify whether the python libraries are imported successfully or not
-
-try:
-    import urllib2
-except ImportError:
-    print "[-] program could not find module : urllib2"
-    sys.exit(1)
-
-try:
-    import re
-except ImportError:
-    print "[-] program could not find module : re"
-    sys.exit(1)
-
-try:
-    import optparse
-except ImportError:
-    print "[-] program could not find module : optparse"
-    sys.exit(1)
-
-try:
-    import httplib
-except ImportError:
-    print "[-] program could not find module : httplib"
-    sys.exit(1)
-
 # python version check
-
 
 def check_python():
     version = sys.version_info
