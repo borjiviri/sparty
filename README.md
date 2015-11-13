@@ -3,9 +3,9 @@
 * Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
 * Modified by: borja@libcrack.so | @borjiviri | 2015
 
-### Tool update
+### Tool update (2015)
 
-Several improvements implemented by borja@libcrack.so (2015):
+Several improvements implemented by borja@libcrack.so:
 
 1. PEP8 code refactorisation
 2. Python2/Python3 detection
