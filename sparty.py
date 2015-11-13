@@ -202,16 +202,9 @@ except ImportError:
 
 def check_python():
     version = sys.version_info
-    if version[:2] != (2, 6):
-        print "[-] Sparty is written in Python 2.6.5 (final). Kindly use that version"
-        print "[devalias.net] !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print "[devalias.net] !!! HERE THERE BE DRAGONS !!!"
-        print "[devalias.net] !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        unsupported_ver = raw_input(
-            "[devalias.net] Would you like to continue past this version check AT YOUR OWN RISK? (Type: YES): ")
-        if unsupported_ver != "YES":
-            print "[devalias.net] Probably a safer choice. Exiting (Entered: %s)" % (unsupported_ver)
-            sys.exit(0)
+    if version[:2][0] != 2:
+        print "[-] Python3 not supported"
+        sys.exit(1)
 
 
 # sparty banner
@@ -225,9 +218,10 @@ def banner():
          _|_|_|    _|        _|    _|  _|    _|      _|          _|
 
         SPARTY : Sharepoint/Frontpage Security Auditing Tool
-        Authored by: Aditya K Sood |{0kn0ck}@secniche.org  | 2013
-        Twitter:     @AdityaKSood
-        Powered by: SecNiche Security Labs
+        Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
+        Updated by: Borja R | borja@libcrack.so | @borjiviri | 2015
+        Powered by: SecNiche Security Labs | 2013
+        Backed by:  Pentest Limited | 2015
         """
     print sparty_banner
     print "\t--------------------------------------------------------------"
