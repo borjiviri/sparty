@@ -176,23 +176,12 @@ sharepoint_target_layout = []
 sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
-# python version check
-
 def check_python():
     version = sys.version_info
-    if version[:2] != (2, 6):
-        print "[-] Sparty is written in Python 2.6.5 (final). Kindly use that version"
-        print "[devalias.net] !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print "[devalias.net] !!! HERE THERE BE DRAGONS !!!"
-        print "[devalias.net] !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        unsupported_ver = raw_input(
-            "[devalias.net] Would you like to continue past this version check AT YOUR OWN RISK? (Type: YES): ")
-        if unsupported_ver != "YES":
-            print "[devalias.net] Probably a safer choice. Exiting (Entered: %s)" % (unsupported_ver)
-            sys.exit(0)
+    if version[:2][0] != 3:
+        print "[-] Error: cannot run with Python3"
+        sys.exit(1)
 
-
-# sparty banner
 def banner():
     print "\t---------------------------------------------------------------"
     sparty_banner = """
@@ -202,18 +191,17 @@ def banner():
                _|  _|        _|    _|  _|    _|      _|          _|
          _|_|_|    _|        _|    _|  _|    _|      _|          _|
 
-        SPARTY : Sharepoint/Frontpage Security Auditing Tool
-        Authored by: Aditya K Sood |{0kn0ck}@secniche.org  | 2013
-        Twitter:     @AdityaKSood
+        Sharepoint/Frontpage Security Pentest Tool
+        Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
+        Updated by: Borja R | borja@libcrack.so | @borjiviri | 2015
         Powered by: SecNiche Security Labs
+        Backed by: Pentest Limited
         """
     print sparty_banner
     print "\t--------------------------------------------------------------"
 
 
-# usage and examples for using sparty
-
-def sparty_usage(destination):
+def usage(destination):
     print "[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " % (sys.argv[0], destination)
     print "[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " % (sys.argv[0], destination)
     print "[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination)
@@ -867,7 +855,7 @@ def main():
             return
 
         elif options.examples == "examples":
-            sparty_usage(target)
+            usage(target)
             return
 
         elif options.directory == "list" or options.directory == "index":
@@ -966,7 +954,7 @@ def main():
         sys.exit(0)
 
     except IndexError as e:
-        sparty_usage()
+        usage()
         sys.exit(0)
 
     except urllib2.HTTPError as h:
