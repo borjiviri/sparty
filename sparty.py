@@ -1,7 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 # Sparty - Sharepoint/Frontend Auditor
 # By: Aditya K Sood - SecNiche Security Labs ! (c) 2013
 # Updated/Bugfixes by: Glenn 'devalias' Grant - http://devalias.net/
+# Updated/Bugfixes by: Borja R - https://www.libcrack.so/
 
 license = """
 Copyright (c) 2013, {Aditya K sood}
