@@ -1,8 +1,8 @@
 #!/usr/bin/env python2
-# Sparty - Sharepoint/Frontend Auditor
-# By: Aditya K Sood - SecNiche Security Labs (c) 2013
+# coding: utf-8
+# Original code: Aditya K Sood - SecNiche Security Labs (c) 2013
 # Updated/Bugfixes by: Glenn 'devalias' Grant - http://devalias.net/
-# Updated/Bugfixes by: Borja R - https://www.libcrack.so/
+# Refactorisation by: Borja R - https://www.libcrack.so/
 
 import os
 import re
@@ -10,11 +10,11 @@ import sys
 import logging
 import urllib2
 import httplib
+import requests
 import optparse
+from ntlm import HTTPNtlmAuthHandler
 
-# Frontend (bin) repository files
-
-front_bin = [
+front_bin = [   # Frontend (bin) repository files
     '_vti_inf.html',
     '_vti_bin/shtml.dll/_vti_rpc',
     '_vti_bin/owssvr.dll',
@@ -50,9 +50,7 @@ front_services = [
     '_vti_bin/UserProfileService.asmx',
     '_vti_bin/WebPartPages.asmx']
 
-# Frontend (pvt) repository files
-
-front_pvt = [
+front_pvt = [   # Frontend (pvt) repository files
     '_vti_pvt/authors.pwd',
     '_vti_pvt/administrators.pwd',
     '_vti_pvt/users.pwd',
@@ -73,9 +71,7 @@ front_pvt = [
     '_vti_pvt/service/lck',
     '_vti_pvt/frontpg.lck']
 
-# Sharepoint and Frontend (directory) repository
-
-directory_check = [
+directory_check = [ # Sharepoint and Frontend (directory) repository
     '_vti_pvt/',
     '_vti_bin/',
     '_vti_log/',
@@ -85,9 +81,7 @@ directory_check = [
     '_vti_bin/_vti_aut',
     '_vti_txt/']
 
-# Sharepoint repository files
-
-sharepoint_check_layout = [
+sharepoint_check_layout = [ # Sharepoint repository files
     '_layouts/aclinv.aspx',
     '_layouts/addrole.aspx',
     '_layouts/AdminRecycleBin.aspx',
@@ -169,6 +163,11 @@ sharepoint_check_catalog = [
     '_catalogs/wp/Forms/AllItems.aspx',
     '_catalogs/wt/Forms/Common.aspx']
 
+password_files = [
+    '_vti_pvt/service.pwd',
+    '_vti_pvt/administrators.pwd',
+    '_vti_pvt/authors.pwd']
+
 refine_target = []
 pvt_target = []
 dir_target = []
@@ -177,28 +176,28 @@ sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
 def check_python():
+    """
+    Checks if the script is being run using python v3
+    """
     version = sys.version_info
-    if version[:2][0] != 3:
+    if version[:2][0] == 3:
         print "[-] Error: cannot run with Python3"
         sys.exit(1)
 
 def banner():
-    print "\t---------------------------------------------------------------"
-    sparty_banner = """
-          _|_|_|    _|_|_|     _|_|    _|_|_|    _|_|_|_|_|  _|      _|
-         _|        _|    _|  _|    _|  _|    _|      _|        _|  _|
-           _|_|    _|_|_|    _|_|_|_|  _|_|_|        _|          _|
-               _|  _|        _|    _|  _|    _|      _|          _|
-         _|_|_|    _|        _|    _|  _|    _|      _|          _|
+    print("""
+      _|_|_|    _|_|_|     _|_|    _|_|_|    _|_|_|_|_|  _|      _|
+     _|        _|    _|  _|    _|  _|    _|      _|        _|  _|
+       _|_|    _|_|_|    _|_|_|_|  _|_|_|        _|          _|
+           _|  _|        _|    _|  _|    _|      _|          _|
+     _|_|_|    _|        _|    _|  _|    _|      _|          _|
 
-        Sharepoint/Frontpage Security Pentest Tool
-        Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
-        Updated by: Borja R | borja@libcrack.so | @borjiviri | 2015
-        Powered by: SecNiche Security Labs
-        Backed by: Pentest Limited
-        """
-    print sparty_banner
-    print "\t--------------------------------------------------------------"
+    Sharepoint/Frontpage Security Pentest Tool
+    Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
+    Updated by: Borja R | borja@libcrack.so | @borjiviri | 2015
+    Powered by: SecNiche Security Labs
+    Backed by: Pentest Limited
+    """)
 
 
 def usage(destination):
@@ -211,36 +210,41 @@ def usage(destination):
     print "\t\t: (3) do not specify '/' at the end of url"
 
 
-# build target for scanning frontpage and sharepoint files
-
 def build_target(target, front_dirs=[], refine_target=[]):
+    """
+    Build target for scanning frontpage and sharepoint files
+    """
     for item in front_dirs:
         refine_target.append(target + "/" + item)
 
 
-# function to display success notification!
-def module_success(module_name):
+def success(module_name):
+    """
+    Display success notification
+    """
     print "\n[+] check for HTTP codes (200) for active list of accessible files or directories (404) - Not exists | (403) - Forbidden (500) - Server Error"
     print "\n[+] (%s) - module executed successfully\n" % module_name
 
 
-# extracting information about target's enviornment
-
-def target_information(name):
+def target_information(url):
+    """
+    Extract information about target's enviornment
+    """
+    print "[+] fetching information from the given target : (%s)" % (url)
     try:
-        headers = urllib2.urlopen(name)
-        print "[+] fetching information from the given target : (%s)" % (headers.geturl())
-        print "[+] target responded with HTTP code: (%s)" % headers.getcode()
-        print "[+] target is running server: (%s)" % headers.info()['server']
+        r = requests.get(url)
+        print "[+] target responded with HTTP code: (%s)" % r.status_code
+        print "[+] target is running server: (%s)" % r.headers["server"]
 
     except urllib2.HTTPError as h:
         print "[-] url error occured - (%s)" % h.code
         pass
 
 
-# audit function for scanning frontpage and sharepoint files
-
 def audit(target=[]):
+    """
+    Scan for common frontpage/sharepoint files
+    """
     for element in target:
         try:
             handle = urllib2.urlopen(element)
@@ -255,20 +259,16 @@ def audit(target=[]):
             print "[-] server responds with bad status"
             pass
 
-# dump frontpage service and administrators password files if present
-
-
 def dump_credentials(dest):
-    pwd_targets = []
-    pwd_files = [
-        '_vti_pvt/service.pwd',
-        '_vti_pvt/administrators.pwd',
-        '_vti_pvt/authors.pwd']
+    """
+    Dump frontpage service and administrators password files if present
+    """
+    password_targets = []
 
-    for item in pwd_files:
-        pwd_targets.append(dest + "/" + item)
+    for item in password_files:
+        password_targets.append(dest + "/" + item)
 
-    for entry in pwd_targets:
+    for entry in password_targets:
         try:
             handle = urllib2.urlopen(entry)
             if handle.getcode() == 200:
@@ -473,7 +473,7 @@ def frontpage_service_listing(name):
                 print "[-] target fails to accept request - (%s) | (%s)\n" % (data, response.getcode())
 
     except urllib2.URLError as e:
-        print "[-] url error, seems like authentication is required or server failed to handle request! - %s" % e.code
+        print "[-] url error, seems like authentication is required or server failed to handle request - %s" % e.code
         pass
 
     except httplib.BadStatusLine:
@@ -623,20 +623,11 @@ def file_upload_check(name):
             print "[-] server responds with bad status"
             pass
 
-# devalias.net - Authentication
-
-
 def enable_ntlm_authentication(user="", password="", url=""):
+    """
+    NTLM Authentication routine (implemented by devalias.net)
+    """
     print "[+][devalias.net] Enabling NTLM authentication support"
-    # Import ntlm library
-    try:
-    # import ntlm
-        from ntlm import HTTPNtlmAuthHandler
-        print "[+][devalias.net][NTLM Authentication] NTLM Support Library Loaded"
-    except ImportError:
-        print "[-][devalias.net][NTLM Authentication] Program could not find module : ntlm (Is the ntlm library installed/available locally?"
-        sys.exit(1)
-
     try:
         from urlparse import urlparse, urlunparse
     except ImportError:
@@ -675,10 +666,10 @@ def enable_ntlm_authentication(user="", password="", url=""):
 
     print "[+][devalias.net][NTLM authentication] Credentials enabled for " + user
 
-# main routine to trigger sub routines (functions)
-
-
 def main():
+    """
+    Main routine
+    """
     check_python()
     banner()
 
@@ -808,10 +799,10 @@ def main():
 
         if options.dump == "dump" or options.dump == "extract":
             print "\n[+]------------------------------------------------------------------------------------------------"
-            print "[+] dumping (service.pwd | authors.pwd | administrators.pwd | ws_ftp.log) files if possible!"
+            print "[+] dumping (service.pwd | authors.pwd | administrators.pwd | ws_ftp.log) files if possible"
             print "[+]--------------------------------------------------------------------------------------------------\n"
             dump_credentials(target)
-            module_success("password dumping")
+            success("password dumping")
             return
 
         elif options.exploit == "rpc_version_check":
@@ -819,7 +810,7 @@ def main():
             print "[+] auditing frontpage RPC service                                          "
             print "[+]-------------------------------------------------------------------------\n"
             frontpage_rpc_check(target)
-            module_success("module RPC version check")
+            success("module RPC version check")
             return
 
         elif options.exploit == "rpc_service_listing":
@@ -827,7 +818,7 @@ def main():
             print "[+] auditing frontpage RPC service for fetching listing                     "
             print "[+]-------------------------------------------------------------------------\n"
             frontpage_service_listing(target)
-            module_success("module RPC service listing check")
+            success("module RPC service listing check")
             return
 
         elif options.exploit == "author_config_check":
@@ -835,7 +826,7 @@ def main():
             print "[+] auditing frontpage configuration settings                               "
             print "[+]-------------------------------------------------------------------------\n"
             frontpage_config_check(target)
-            module_success("module RPC check")
+            success("module RPC check")
             return
 
         elif options.exploit == "author_remove_folder":
@@ -843,7 +834,7 @@ def main():
             print "[+] trying to remove folder from web server                                 "
             print "[+]-------------------------------------------------------------------------\n"
             frontpage_remove_folder(target)
-            module_success("module remove folder check")
+            success("module remove folder check")
             return
 
         elif options.exploit == "rpc_file_upload":
@@ -851,7 +842,7 @@ def main():
             print "[+] auditing file uploading misconfiguration                                "
             print "[+]-------------------------------------------------------------------------\n"
             file_upload_check(target)
-            module_success("module file upload check")
+            success("module file upload check")
             return
 
         elif options.examples == "examples":
@@ -864,7 +855,7 @@ def main():
             print "[+] auditing frontpage directory permissions (forbidden | index | not exist)"
             print "[+]-------------------------------------------------------------------------\n"
             audit(dir_target)
-            module_success("directory check")
+            success("directory check")
             return
 
         elif options.frontpage == "bin":
@@ -873,7 +864,7 @@ def main():
             print "[+] auditing frontpage '/_vti_bin/' directory"
             print "[+]------------------------------------------\n"
             audit(refine_target)
-            module_success("bin file access")
+            success("bin file access")
 
         elif options.frontpage == "pvt":
             build_target(target, front_pvt, pvt_target)
@@ -881,7 +872,7 @@ def main():
             print "[+] auditing '/_vti_pvt/' directory for sensitive information "
             print "[+]-----------------------------------------------------------\n"
             audit(pvt_target)
-            module_success("pvt file access")
+            success("pvt file access")
             return
 
         elif options.fingerprint == "ms_sharepoint":
@@ -903,7 +894,7 @@ def main():
             print "[+] auditing sharepoint '/_layouts/' directory for access permissions "
             print "[+]-------------------------------------------------------------------\n"
             audit(sharepoint_target_layout)
-            module_success("layout file access")
+            success("layout file access")
             return
 
         elif options.sharepoint == "forms":
@@ -915,7 +906,7 @@ def main():
             print "[+] auditing sharepoint '/forms/' directory for access permissions "
             print "[+]----------------------------------------------------------------\n"
             audit(sharepoint_target_forms)
-            module_success("forms file access")
+            success("forms file access")
             return
 
         elif options.sharepoint == "catalog":
@@ -927,7 +918,7 @@ def main():
             print "[+] auditing sharepoint '/catalog/' directory for access permissions"
             print "[+]------------------------------------------------------------------\n"
             audit(sharepoint_target_catalog)
-            module_success("catalogs file access")
+            success("catalogs file access")
             return
 
         elif options.services == "serv" or options.services == "services":
@@ -936,7 +927,7 @@ def main():
             print "[+] checking exposed services in the frontpage/sharepoint  directory"
             print "[+]-----------------------------------------------------------------\n"
             audit(refine_target)
-            module_success("exposed services check")
+            success("exposed services check")
 
         else:
             print "[-] please provide the proper scanning options"
