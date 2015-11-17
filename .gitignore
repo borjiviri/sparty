@@ -1,0 +1,10 @@
+*.py[co]
+*.log
+*.lock
+*.cfg
+*.orig
+*.egg-info
+lib
+venv
+dist
+build
