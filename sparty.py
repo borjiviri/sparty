@@ -1,11 +1,18 @@
 #!/usr/bin/env python2
-# Sparty - Sharepoint/Frontend Auditor
-# By: Aditya K Sood - SecNiche Security Labs (c) 2013
+# coding: utf-8
+# Original code: Aditya K Sood - SecNiche Security Labs (c) 2013
 # Updated/Bugfixes by: Glenn 'devalias' Grant - http://devalias.net/
-# Updated/Bugfixes by: Borja R - https://www.libcrack.so/
+# Refactorisation by: Borja R - https://www.libcrack.so/
 
 import os
+import re
 import sys
+import logging
+import urllib2
+import httplib
+import requests
+import optparse
+from ntlm import HTTPNtlmAuthHandler
 
 # Frontend (bin) repository files
 
@@ -164,6 +171,11 @@ sharepoint_check_catalog = [
     '_catalogs/wp/Forms/AllItems.aspx',
     '_catalogs/wt/Forms/Common.aspx']
 
+password_files = [
+    '_vti_pvt/service.pwd',
+    '_vti_pvt/administrators.pwd',
+    '_vti_pvt/authors.pwd']
+
 refine_target = []
 pvt_target = []
 dir_target = []
@@ -171,43 +183,16 @@ sharepoint_target_layout = []
 sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
-# verify whether the python libraries are imported successfully or not
-
-try:
-    import urllib2
-except ImportError:
-    print "[-] program could not find module : urllib2"
-    sys.exit(1)
-
-try:
-    import re
-except ImportError:
-    print "[-] program could not find module : re"
-    sys.exit(1)
-
-try:
-    import optparse
-except ImportError:
-    print "[-] program could not find module : optparse"
-    sys.exit(1)
-
-try:
-    import httplib
-except ImportError:
-    print "[-] program could not find module : httplib"
-    sys.exit(1)
-
-# python version check
-
-
 def check_python():
+    """
+    Checks if the script is being run using python v3
+    """
     version = sys.version_info
     if version[:2][0] != 2:
         print "[-] Python3 not supported"
         sys.exit(1)
 
 
-# sparty banner
 def banner():
     print "\t---------------------------------------------------------------"
     sparty_banner = """
@@ -227,9 +212,7 @@ def banner():
     print "\t--------------------------------------------------------------"
 
 
-# usage and examples for using sparty
-
-def sparty_usage(destination):
+def usage(destination):
     print "[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " % (sys.argv[0], destination)
     print "[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " % (sys.argv[0], destination)
     print "[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination)
@@ -239,36 +222,41 @@ def sparty_usage(destination):
     print "\t\t: (3) do not specify '/' at the end of url"
 
 
-# build target for scanning frontpage and sharepoint files
-
 def build_target(target, front_dirs=[], refine_target=[]):
+    """
+    Build target for scanning frontpage and sharepoint files
+    """
     for item in front_dirs:
         refine_target.append(target + "/" + item)
 
 
-# function to display success notification!
-def module_success(module_name):
+def success(module_name):
+    """
+    Display success notification
+    """
     print "\n[+] check for HTTP codes (200) for active list of accessible files or directories (404) - Not exists | (403) - Forbidden (500) - Server Error"
     print "\n[+] (%s) - module executed successfully\n" % module_name
 
 
-# extracting information about target's enviornment
-
-def target_information(name):
+def target_information(url):
+    """
+    Extract information about target's enviornment
+    """
+    print "[+] fetching information from the given target : (%s)" % (url)
     try:
-        headers = urllib2.urlopen(name)
-        print "[+] fetching information from the given target : (%s)" % (headers.geturl())
-        print "[+] target responded with HTTP code: (%s)" % headers.getcode()
-        print "[+] target is running server: (%s)" % headers.info()['server']
+        r = requests.get(url)
+        print "[+] target responded with HTTP code: (%s)" % r.status_code
+        print "[+] target is running server: (%s)" % r.headers["server"]
 
     except urllib2.HTTPError as h:
         print "[-] url error occured - (%s)" % h.code
         pass
 
 
-# audit function for scanning frontpage and sharepoint files
-
 def audit(target=[]):
+    """
+    Scan for common frontpage/sharepoint files
+    """
     for element in target:
         try:
             handle = urllib2.urlopen(element)
@@ -283,20 +271,17 @@ def audit(target=[]):
             print "[-] server responds with bad status"
             pass
 
-# dump frontpage service and administrators password files if present
-
 
 def dump_credentials(dest):
-    pwd_targets = []
-    pwd_files = [
-        '_vti_pvt/service.pwd',
-        '_vti_pvt/administrators.pwd',
-        '_vti_pvt/authors.pwd']
+    """
+    Dump frontpage service and administrators password files if present
+    """
+    password_targets = []
 
-    for item in pwd_files:
-        pwd_targets.append(dest + "/" + item)
+    for item in password_files:
+        password_targets.append(dest + "/" + item)
 
-    for entry in pwd_targets:
+    for entry in password_targets:
         try:
             handle = urllib2.urlopen(entry)
             if handle.getcode() == 200:
@@ -982,7 +967,7 @@ def main():
         sys.exit(0)
 
     except IndexError as e:
-        sparty_usage()
+        usage()
         sys.exit(0)
 
     except urllib2.HTTPError as h:

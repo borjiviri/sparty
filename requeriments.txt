@@ -1,0 +1,7 @@
+re
+ntlm
+logging
+urllib2
+httplib
+optparse
+urlparse
