@@ -301,7 +301,7 @@ def dump_credentials(dest):
             logger.info( handle.read()
 
         except urllib2.HTTPError as h:
-            logger.info("[-] could not dump the file located at : (%s) | (%d)" % (entry, h.code))
+            logger.info("[-] could not dump the file located at : (%s) | (%d)" % (entry, h.code)
             continue
 
         except httplib.BadStatusLine:
@@ -312,8 +312,10 @@ def dump_credentials(dest):
     logger.info("[+] check the (%s) file if generated\n" % (filename)
 
 
-# fingerprinting frontpage version using default files
-def fingerprint_frontpage(name):
+def fingerlogger.info(_frontpage(name):
+    """
+    Fingerlogger.info(ing frontpage version using default files
+    """
     enum_nix = [
         '_vti_bin/_vti_aut/author.exe',
         '_vti_bin/_vti_adm/admin.exe',
@@ -371,8 +373,10 @@ def fingerprint_frontpage(name):
     logger.info("[*] ---------------------------------------------------------------------------------------"
 
 
-# dump sharepoint headers for version fingerlogger.info(ing
 def dump_sharepoint_headers(name):
+    """
+    dump sharepoint headers for version fingerprint
+    """
     logger.info( ""
     try:
         dump_s = urllib2.urlopen(name)
