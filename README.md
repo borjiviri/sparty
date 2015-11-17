@@ -1,58 +1,62 @@
--------------------------------------------------
-Sparty - Sharepoint/Frontpage Auditing Tool !
-Authored by: Aditya K Sood |{0kn0ck}@secniche.org  | 2013
-             Twitter:     @AdityaKSood
-Powered by: SecNiche Security Labs !
-------------------------------------------------
+# Sparty - Sharepoint/Frontpage Pentest
+
+* Authored by: Aditya K Sood | {0kn0ck}@secniche.org | @AdityaKSood | 2013
+* Modified by: borja@libcrack.so | @borjiviri | 2015
+
+### Tool update (2015)
+
+Several improvements implemented by borja@libcrack.so:
+
+1. PEP8 code refactorisation
+2. Python2/Python3 detection
+3. Usage of requests library instead of the old httplib & urllib2
+
+### Powered by: SecNiche Security Labs
+
 Sparty is an open source tool written in python to audit web applications using sharepoint and frontpage architecture. The motivation behind this tool is to provide an easy and robust way to scrutinize the security configurations of sharepoint and frontpage based web applications. Due to the complex nature of these web administration software, it is required to have a simple and efficient tool that gathers information, check access permissions, dump critical information from default files and perform automated exploitation if security risks are identified. A number of automated scanners fall short of this and Sparty is a solution to that.
 
+### Functionalities and capabilities
 
------------------------------------
-Functionalities and capabilities !
------------------------------------
-1. Sharepoint and Frontpage Version Detection!
-2. Dumping Password from Exposed Configuration Files!
-3. Exposed Sharepoint/Frontpage Services Scan!
-4. Exposed Directory Check!
-5. Installed File and Access Rights Check!
-6. RPC Service Querying!
-7. File Enumeration!
-8. File Uploading Check!
+1. Sharepoint and Frontpage Version Detection
+2. Dumping Password from Exposed Configuration Files
+3. Exposed Sharepoint/Frontpage Services Scan
+4. Exposed Directory Check
+5. Installed File and Access Rights Check
+6. RPC Service Querying
+7. File Enumeration
+8. File Uploading Check
 
------------------------------------------------
-Additional notes about working and design
-----------------------------------------------
+### Additional notes about working and design
+
 1. This version of sparty is written in Python 2.6 (final) running on backtrack 5.0.
 2. This version (v 0.1) primarily includes assessment of configuration flaws.
 3. This version is based on the practical testing and assessment of frontpage & sharepoint.
 
-----------------------------------------------
-Requirements
-----------------------------------------------
-1. This version uses following libraries:
-        import urllib2
-        import re
-        import os, sys
-        import optparse
-        import httplib
+### Requirements
 
-2. Python 2.6 is required.
+1. Python 2.6 is required.
+2. This version uses following libraries:
 
+```python
+import re
+import os
+import sys
+import urllib2
+import httplib
+import optparse
+```
 
------------------------------------------------
-[+] Things to take care of while using sparty !
------------------------------------------------
+### Things to take care of while using sparty
 
 Please take this into consideration:
 
-1. Always specify https | http explcitly !
-2. Always provide the proper directory structure where sharepoint/frontpage is installed !
-3. Do not specify '/' at the end of url !
+1. Always specify https | http explicitly
+2. Always provide the proper directory structure where sharepoint/frontpage is installed
+3. Do not specify `/` at the end of url
 
---------------------------
-[+] Sparty Help
---------------------------
+### Sparty Help
 
+```text
 	---------------------------------------------------------------
 
           _|_|_|    _|_|_|     _|_|    _|_|_|    _|_|_|_|_|  _|      _|
@@ -116,5 +120,4 @@ Options:
     -x EXAMPLES, --examples=EXAMPLES
                         running usage examples !
 
-
-
+```

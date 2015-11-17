@@ -200,7 +200,7 @@ def check_python():
 
 
 def banner():
-    logger.info( "\t---------------------------------------------------------------"
+    print "\t---------------------------------------------------------------"
     sparty_banner = """
           _|_|_|    _|_|_|     _|_|    _|_|_|    _|_|_|_|_|  _|      _|
          _|        _|    _|  _|    _|  _|    _|      _|        _|  _|
@@ -214,8 +214,8 @@ def banner():
         Powered by: SecNiche Security Labs | 2013
         Backed by:  Pentest Limited | 2015
         """
-    logger.info( sparty_banner
-    logger.info( "\t--------------------------------------------------------------"
+    print sparty_banner
+    print "\t--------------------------------------------------------------"
 
 
 def usage(destination):
@@ -301,7 +301,7 @@ def dump_credentials(dest):
             logger.info( handle.read()
 
         except urllib2.HTTPError as h:
-            logger.info("[-] could not dump the file located at : (%s) | (%d)" % (entry, h.code)
+            logger.info("[-] could not dump the file located at : (%s) | (%d)" % (entry, h.code))
             continue
 
         except httplib.BadStatusLine:
@@ -312,10 +312,8 @@ def dump_credentials(dest):
     logger.info("[+] check the (%s) file if generated\n" % (filename)
 
 
-def fingerlogger.info(_frontpage(name):
-    """
-    Fingerlogger.info(ing frontpage version using default files
-    """
+# fingerprinting frontpage version using default files
+def fingerprint_frontpage(name):
     enum_nix = [
         '_vti_bin/_vti_aut/author.exe',
         '_vti_bin/_vti_adm/admin.exe',
@@ -745,12 +743,12 @@ def main():
 
     exploit.add_option(
         "-v",
-        "--http_fingerlogger.info(",
+        "--http_fingerprint",
         type="choice",
         choices=['ms_sharepoint',
                  'ms_frontpage'],
-        help="<FINGERlogger.info( = ms_sharepoint | ms_frontpage> -- fingerlogger.info( sharepoint or frontpage based on HTTP headers",
-        dest="fingerlogger.info(")
+        help="<FINGERPRINT = ms_sharepoint | ms_frontpage> -- fingerprint sharepoint or frontpage based on HTTP headers",
+        dest="fingerprint")
     exploit.add_option(
         "-d",
         "--dump",
