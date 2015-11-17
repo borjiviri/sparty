@@ -1,7 +1,7 @@
 re
 ntlm
 logging
-urllib2
-httplib
+requests
+requests_ntlm
 optparse
 urlparse
