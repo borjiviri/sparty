@@ -213,6 +213,9 @@ def banner():
 
 
 def usage(destination):
+    """
+    Usage information
+    """
     print "[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " % (sys.argv[0], destination)
     print "[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " % (sys.argv[0], destination)
     print "[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination)
