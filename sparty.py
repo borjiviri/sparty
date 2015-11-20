@@ -187,39 +187,6 @@ sharepoint_target_layout = []
 sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
-def _request(url, data=None, files=None):
-    """
-    Issue an HTTP request using python requests
-
-    Args:
-        url (str): endpoint URL
-        data (dict): data object
-        files (dict): files object
-    Returns:
-        the resulted object
-    """
-    try:
-        req = requests.post(url=url, data=data, files=files)
-    except requests.ConnectionError:
-    except requests.HTTPError:
-        print('Invalid HTTP response')
-    except requests.Timeout:
-        print('Connection timeout')
-    except requests.TooManyRedirects:
-        print('Too many redirects')
-    else:
-        print('Request URL: {0}'.format(url))
-        print('Request data: {0}'.format(data))
-        print('response: \n{0}'.format(req.text))
-    try:
-        if req.status_code != 200:
-            print('Failed to perfom request to {0}'.format(url))
-            print('Error code: {0}'.format(req.status_code))
-            print('Failed request: \n{0}'.format(req.text))
-    except:
-        print('Failed request: none returned')
-    else:
-        return req.json()
 
 def check_python():
     """
