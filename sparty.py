@@ -199,8 +199,8 @@ def check_python():
 
 
 def banner():
-    print ("\t---------------------------------------------------------------")
-    sparty_banner = """
+    banner = """
+        ------------------------------------------------------------------------
           _|_|_|    _|_|_|     _|_|    _|_|_|    _|_|_|_|_|  _|      _|
          _|        _|    _|  _|    _|  _|    _|      _|        _|  _|
            _|_|    _|_|_|    _|_|_|_|  _|_|_|        _|          _|
@@ -212,9 +212,9 @@ def banner():
         Updated by: Borja R | borja@libcrack.so | @borjiviri | 2015
         Powered by: SecNiche Security Labs | 2013
         Backed by:  Pentest Limited | 2015
+        ------------------------------------------------------------------------
         """
-    print (sparty_banner)
-    print ("\t--------------------------------------------------------------")
+    print (banner)
 
 
 def usage(destination):
@@ -666,10 +666,9 @@ def enable_ntlm_authentication(user="", password="", url=""):
         sys.exit(2)
 
     if user == "":
-        user = raw_input("[+][devalias.net][NTLM Authentication] Enter username (DOMAIN\username): ")
+        user = raw_input("[+][devalias.net][NTLM Authentication] Enter username (DOMAIN\\user): ")
     if password == "":
-        password = raw_input(
-            "[+][devalias.net][NTLM Authentication] Enter password: ")
+        password = raw_input("[+][devalias.net][NTLM Authentication] Enter password: ")
 
     parsed_url = urlparse(url)
     base_uri = urlunparse((parsed_url[0], parsed_url[1], "", "", "", ""))
