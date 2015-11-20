@@ -8,8 +8,6 @@ import os
 import re
 import sys
 import logging
-import urllib2
-import httplib
 import requests
 import optparse
 from ntlm import HTTPNtlmAuthHandler
@@ -238,6 +236,48 @@ def build_target(target, front_dirs=[], refine_target=[]):
         refine_target.append(target + "/" + item)
 
 
+def _request(self, url, data=None, files=None):
+    """
+    Issue an HTTP request.
+
+    Args:
+        url (str): endpoint URL
+        data (dict): JSON object
+        files (dict): JSON object
+    Returns:
+        the resulted JSON object if sucess else None
+    """
+    try:
+        # req = requests.post(url=url, data=data, files=files)
+        if data is None:
+            req = requests.get(url=url)
+        else:
+            req = requests.post(url=url, data=data)
+    except requests.ConnectionError:
+        logger.error('Connection error')
+    except requests.HTTPError:
+        logger.error('Invalid HTTP response')
+    except requests.Timeout:
+        logger.error('Connection timeout')
+    except requests.TooManyRedirects:
+        logger.error('Too many redirects')
+    else:
+        logger.debug('Request URL: {0}'.format(url))
+        if data is not None:
+            logger.debug('Requesif data is not None:t data: {0}'.format(data))
+        logger.debug('Request response: \n{0}'.format(req.text))
+    try:
+        if req.status_code != 200:
+            logger.error('Failed to perfom request to {0}'.format(url))
+            logger.debug('Error code: {0}'.format(req.status_code))
+            logger.debug('Failed request: \n{0}'.format(req.text))
+    except:
+        logger.debug('Failed request: none returned')
+    else:
+        #return req.json()
+        return req
+
+
 def success(module_name):
     """
     Display success notification
@@ -252,12 +292,11 @@ def target_information(url):
     """
     logger.info("[+] fetching information from the given target : (%s)" % (url))
     try:
-        r = requests.get(url)
+        r = _request(url)
         logger.info("[+] target responded with HTTP code: (%s)" % r.status_code)
         logger.info("[+] target is running server: (%s)" % r.headers["server"])
-
-    except urllib2.HTTPError as h:
-        logger.info("[-] url error occured - (%s)" % h.code)
+    except requests.RequestException as e:
+        logger.info("[-] url error occured - (%s)" % e.code)
         pass
 
 
@@ -267,16 +306,10 @@ def audit(target=[]):
     """
     for element in target:
         try:
-            handle = urllib2.urlopen(element)
-            info = handle.info()
-            response_code = handle.getcode()
-            logger.info("[+] (%s) - (%d)" % (element, response_code))
-
-        except urllib2.HTTPError as h:
-            logger.info("[-] (%s) - (%d)" % (element, h.code))
-
-        except httplib.BadStatusLine:
-            logger.info("[-] server responds with bad status")
+            r = _request(element)
+            logger.info("[+] (%s) - (%d)" % (element, r.status_code))
+        except requests.RequestException as e:
+            logger.info("[-] url error occured - (%s)" % e.code)
             pass
 
 
@@ -291,20 +324,15 @@ def dump_credentials(dest):
 
     for entry in password_targets:
         try:
-            handle = urllib2.urlopen(entry)
-            if handle.getcode() == 200:
+            r = _request(entry)
+            if r.status_code == 200:
                 logger.info("[+] dumping contents of file located at : (%s)" % (entry))
                 filename = "__dump__.txt"
                 dump = open(filename, 'a')
-                dump.write(handle.read())
-            logger.info( handle.read())
-
-        except urllib2.HTTPError as h:
-            logger.info("[-] could not dump the file located at : (%s) | (%d)" % (entry, h.code))
-            continue
-
-        except httplib.BadStatusLine:
-            logger.info("[-] server responds with bad status")
+                dump.write(r.read())
+            logger.info(r.read())
+        except requests.RequestException as e:
+            logger.error("[-] could not dump the file located at : (%s) | (%d)" % (entry, e.code))
             continue
 
         logger.info("[*] ---------------------------------------------------------------------------------------")
@@ -332,11 +360,11 @@ def fingerprint_frontpage(name):
 
     for entry in build_enum_nix:
         try:
-            info = urllib2.urlopen(entry)
-            if info.getcode() == 200:
-                logger.info("[+] front page is tested as : nix version |  (%s) | (%d)" % (entry, info.getcode()))
-
-        except urllib2.HTTPError:
+            info = _request(entry)
+            info = request(entry)
+            if info.status_code == 200:
+                logger.info("[+] front page is tested as : nix version |  (%s) | (%d)" % (entry, info.status_code))
+        except requests.RequestException as e:
             pass
 
     for item in enum_win:
@@ -344,29 +372,20 @@ def fingerprint_frontpage(name):
 
     for entry in build_enum_win:
         try:
-            info = urllib2.urlopen(entry)
-            if info.getcode() == 200:
-                logger.info("[+] front page is tested as : windows version |  (%s) | (%d)" % (entry, info.getcode()))
-
-        except urllib2.HTTPError:
-                logger.info("[-] failed to extract the version of frontpage from default file!")
+            info = _request(entry)
+            if info.status_code == 200:
+                logger.info("[+] front page is tested as : windows version |  (%s) | (%d)" % (entry, info.status_code))
+        except requests.RequestException:
+                logger.error("[-] failed to extract the version of frontpage from default file!")
                 pass
-
-        except httplib.BadStatusLine:
-            logger.info("[-] server responds with bad status")
-            pass
 
     frontend_version = name + "/_vti_inf.html"
     try:
-        version = urllib2.urlopen(frontend_version)
+        version = _request(frontend_version)
         logger.info("[+] extracting frontpage version from default file : (%s):" % re.findall(r'FPVersion=(.*)', version.read()))
 
-    except urllib2.HTTPError:
+    except requests.RequestException:
         logger.error("[-] failed to extract the version of frontpage from default file")
-        pass
-
-    except httplib.BadStatusLine:
-        logger.error("[-] server responds with bad status")
         pass
 
     logger.info("[*] ---------------------------------------------------------------------------------------")
@@ -377,37 +396,33 @@ def dump_sharepoint_headers(name):
     dump sharepoint headers for version fingerprint
     """
     try:
-        dump_s = urllib2.urlopen(name)
-        logger.info("[+] configured sharepoint version is  : (%s)" % dump_s.info()['microsoftsharepointteamservices']
+        dump_s = _request(name)
+        logger.info("[+] configured sharepoint version is  : (%s)" % dump_s.headers['microsoftsharepointteamservices']
 )
     except KeyError:
         logger.error("[-] sharepoint version could not be extracted using HTTP header :  MicrosoftSharepointTeamServices")
 
     try:
-        dump_f = urllib2.urlopen(name)
-        logger.info("[+] sharepoint is configured with load balancing capability : (%s)" % dump_f.info()['x-sharepointhealthscore'])
+        dump_f = _request(name)
+        logger.info("[+] sharepoint is configured with load balancing capability : (%s)" % dump_f.headers['x-sharepointhealthscore'])
 
     except KeyError:
         logger.error("[-] sharepoint load balancing ability could not be determined using HTTP header : X-SharepointHealthScore")
 
     try:
-        dump_g = urllib2.urlopen(name)
-        logger.info("[+] sharepoint is configured with explicit diagnosis (GUID based log analysis) purposes : (%s)" % dump_f.info()['sprequestguid'])
+        dump_g = _request(name)
+        logger.info("[+] sharepoint is configured with explicit diagnosis (GUID based log analysis) purposes : (%s)" % dump_f.headers['sprequestguid'])
 
     except KeyError:
         logger.error("[-] sharepoint diagnostics ability could not be determined using HTTP header : SPRequestGuid")
 
-    except urllib2.HTTPError:
+    except requests.RequestException:
         pass
-
-    except httplib.BadStatusLine:
-        logger.error("[-] server responds with bad status")
-        pass
-
-
-# file uploading routine to upload file remotely on frontpage extensions
 
 def frontpage_rpc_check(name):
+    """
+    File upload remotely on frontpage extensions
+    """
     headers = {
         'MIME-Version': '4.0',
         'User-Agent': 'MSFrontPage/4.0',
@@ -426,35 +441,29 @@ def frontpage_rpc_check(name):
 
     logger.info("[+] Sending HTTP GET request to - (%s) for verifying whether RPC is listening" % destination)
     try:
-        req = urllib2.Request(destination)
-        response = urllib2.urlopen(req)
-        if response.getcode() == 200:
-            logger.info("[+] target is listening on frontpage RPC - (%s)\n" % response.getcode())
+        response = _request(destination)
+        if response.status_code == 200:
+            logger.info("[+] target is listening on frontpage RPC - (%s)\n" % response.status_code)
         else:
-            logger.info("[-] target is not listening on frontpage RPC - (%s)\n" % response.getcode())
+            logger.info("[-] target is not listening on frontpage RPC - (%s)\n" % response.status_code)
 
-    except urllib2.URLError as e:
-        logger.error("[-] url error, code: %s" % e.code)
-        pass
-
-    except httplib.BadStatusLine as h:
-        logger.error("[-] server responds with bad status")
+    except requests.RequestException as e:
+        logger.error("[-] Error, status: %s" % e)
         pass
 
     logger.info("[+] Sending HTTP POST request to retrieve software version - (%s)" % destination)
     try:
-        req = urllib2.Request(destination, data, headers)
-        response = urllib2.urlopen(req)
-        if response.getcode() == 200:
-            logger.info("[+] target accepts the request - (%s) | (%s)\n" % (data, response.getcode()))
+        response = _request(url=destination, data=data, headers=headers)
+        if response.status_code == 200:
+            logger.info("[+] target accepts the request - (%s) | (%s)\n" % (data, response.status_code))
             filename = "__version__.txt" + ".html"
             version = open(filename, 'a')
             version.write(response.read())
             logger.info("[+] check file for contents - (%s) \n" % filename)
         else:
-            logger.info("[-] target fails to accept request - (%s) | (%s)\n" % (data, response.getcode()))
+            logger.info("[-] target fails to accept request - (%s) | (%s)\n" % (data, response.status_code))
 
-    except urllib2.URLError as e:
+    except requests.RequestException as e:
         logger.error("[-] url error, seems like authentication is required or server failed to handle request - %s" % e.code)
         pass
 
@@ -489,23 +498,18 @@ def frontpage_service_listing(name):
     logger.info("[+] Sending HTTP POST request to retrieve service listing  - (%s)" % destination)
     try:
         for entry in data:
-            req = urllib2.Request(destination, entry, headers)
-            response = urllib2.urlopen(req)
-            if response.getcode() == 200:
-                logger.info("[+] target accepts the request - (%s) | (%s)" % (entry, response.getcode()))
+            response = _request(url=destination, data=entry, headers=headers)
+            if response.status_code == 200:
+                logger.info("[+] target accepts the request - (%s) | (%s)" % (entry, response.status_code))
                 filename = "__service-list__.txt" + entry + ".html"
                 service_list = open(filename, 'a')
                 service_list.write(response.read())
                 logger.info("[+] check file for contents - (%s) \n" % filename)
             else:
-                logger.info("[-] target fails to accept request - (%s) | (%s)\n" % (data, response.getcode()))
+                logger.info("[-] target fails to accept request - (%s) | (%s)\n" % (data, response.status_code))
 
-    except urllib2.URLError as e:
+    except requests.RequestException as e:
         logger.error("[-] url error, seems like authentication is required or server failed to handle request - %s" % e.code)
-        pass
-
-    except httplib.BadStatusLine:
-        logger.error("[-] server responds with bad status")
         pass
 
     logger.info("[*] ---------------------------------------------------------------------------------------")
@@ -544,24 +548,19 @@ def frontpage_config_check(name):
         destination = name + "/" + front_exp_target
         logger.info("[+] Sending HTTP POST request to [open service | listing documents] - (%s)" % destination)
         try:
-            req = urllib2.Request(destination, item, headers)
-            response = urllib2.urlopen(req)
-            if response.getcode() == 200:
-                logger.info("[+] target accepts the request - (%s) | (%s)\n" % (item, response.getcode()))
+            response = _request(url=destination, data=item, headers=headers)
+            if response.status_code == 200:
+                logger.info("[+] target accepts the request - (%s) | (%s)\n" % (item, response.status_code))
                 filename = "__author-dll-config__.txt" + ".html"
                 service_list = open(filename, 'a')
                 service_list.write(response.read())
                 logger.info("[+] check file for contents - (%s) \n" % filename)
 
             else:
-                logger.info("[-] target fails to accept request - (%s) | (%s)\n" % (item, response.getcode()))
+                logger.info("[-] target fails to accept request - (%s) | (%s)\n" % (item, response.status_code))
 
-        except urllib2.URLError as e:
+        except requests.RequestException as e:
             logger.error("[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" % (e.code, item))
-            pass
-
-        except httplib.BadStatusLine:
-            logger.error("[-] server responds with bad status")
             pass
 
 
@@ -591,27 +590,22 @@ def frontpage_remove_folder(name):
         destination = name + "/" + file_exp_target
         logger.info("[+] Sending HTTP POST request to remove '/' directory to - (%s)" % destination)
         try:
-            req = urllib2.Request(destination, item, headers)
-            response = urllib2.urlopen(req)
-            if response.getcode() == 200:
-                logger.info("[+] folder removed successfully - (%s) | (%s)\n" % (item, response.getcode()))
+            response = _request(url=destination, data=item, headers=headers)
+            if response.status_code == 200:
+                logger.info("[+] folder removed successfully - (%s) | (%s)\n" % (item, response.status_code))
                 for line in response.readlines():
                     logger.info(line)
             else:
-                logger.error("[-] fails to remove '/' folder at  - (%s) | (%s)\n" % (item, response.getcode()))
+                logger.error("[-] fails to remove '/' folder at  - (%s) | (%s)\n" % (item, response.status_code))
 
-        except urllib2.URLError as e:
+        except requests.RequestException as e:
             logger.error("[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" % (e.code, item))
             pass
 
-        except httplib.BadStatusLine:
-            logger.error("[-] server responds with bad status")
-            pass
-
-
-# file uploading through author.dll
-
 def file_upload_check(name):
+    """
+    File uploading through author.dll
+    """
     headers = {
         'MIME-Version': '4.0',
         'User-Agent': 'MSFrontPage/4.0',
@@ -636,21 +630,16 @@ def file_upload_check(name):
         destination = name + "/" + file_exp_target
         logger.info("[+] Sending HTTP POST request for uploading file to - (%s)" % destination)
         try:
-            req = urllib2.Request(destination, item, headers)
-            response = urllib2.urlopen(req)
-            if response.getcode() == 200:
-                logger.info("[+] file uploaded successfully - (%s) | (%s)\n" % (item, response.getcode()))
+            response = _request(url=destination, data=item, headers=headers)
+            if response.status_code == 200:
+                logger.info("[+] file uploaded successfully - (%s) | (%s)\n" % (item, response.status_code))
                 for line in response.readlines():
                     logger.info(line)
             else:
-                logger.error("[-] file fails to upload at  - (%s) | (%s)\n" % (item, response.getcode()))
+                logger.error("[-] file fails to upload at  - (%s) | (%s)\n" % (item, response.status_code))
 
-        except urllib2.URLError as e:
+        except requests.RequestException as e:
             logger.error("[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" % (e.code, item))
-            pass
-
-        except httplib.BadStatusLine:
-            logger.error("[-] server responds with bad status")
             pass
 
 def enable_ntlm_authentication(user="", password="", url=""):
@@ -986,26 +975,30 @@ def main():
 
     except IndexError as e:
         usage()
-        sys.exit(0)
+        sys.exit(1)
 
-    except urllib2.HTTPError as h:
-        logger.error("[-] HTTPError : %s" % h.code)
-        logger.error("[+] please specify the target with protocol handlers as http | https")
-        sys.exit(0)
+    except requests.ConnectionError as e:
+        logger.error("[-] Connection Error : %s" % e)
+        sys.exit(2)
 
-    except urllib2.URLError as u:
-        logger.error("[-] URLError : %s" % u.args)
-        logger.error("[+] please specify the target with protocol handlers as http | https")
-        sys.exit(0)
+    ## except requests.HTTPError as e:
+    ##     logger.error('Invalid HTTP response')
+    ##     logger.error("[-] HTTPError : %s" % e.code)
+    ##     sys.exit(1)
+    ## except requests.Timeout as e:
+    ##     logger.error("[-] Timeout : %s" % e.args)
+    ##     sys.exit(1)
+    ## except requests.TooManyRedirects:
+    ##     logger.error('[- ]Too many redirects')
+    ##     sys.exit(1)
 
     except KeyboardInterrupt:
         logger.error("[-] halt signal detected, exiting the program\n")
-        sys.exit(0)
+        sys.exit(10)
 
     except None:
-        logger.info("[] Hey")
-        sys.exit(0)
+        logger.info("[*] Lulz")
+        sys.exit(99)
 
-# calling main
 if __name__ == '__main__':
     main()
