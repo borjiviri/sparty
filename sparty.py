@@ -834,6 +834,13 @@ def main():
         help="running usage examples",
         dest="examples")
 
+    general.add_option(
+        "-w",
+        "--loglevel",
+        type="int",
+        help="Verbosity level (10,20,30,40,50)",
+        dest="loglevel")
+
     parser.add_option_group(front_page)
     parser.add_option_group(share_point)
     parser.add_option_group(mandatory)
