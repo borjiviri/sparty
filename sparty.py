@@ -8,6 +8,8 @@ import os
 import re
 import sys
 import logging
+import urllib2
+import httplib
 import requests
 import optparse
 from ntlm import HTTPNtlmAuthHandler
@@ -185,6 +187,39 @@ sharepoint_target_layout = []
 sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
+def _request(url, data=None, files=None):
+    """
+    Issue an HTTP request using python requests
+
+    Args:
+        url (str): endpoint URL
+        data (dict): data object
+        files (dict): files object
+    Returns:
+        the resulted object
+    """
+    try:
+        req = requests.post(url=url, data=data, files=files)
+    except requests.ConnectionError:
+    except requests.HTTPError:
+        print('Invalid HTTP response')
+    except requests.Timeout:
+        print('Connection timeout')
+    except requests.TooManyRedirects:
+        print('Too many redirects')
+    else:
+        print('Request URL: {0}'.format(url))
+        print('Request data: {0}'.format(data))
+        print('response: \n{0}'.format(req.text))
+    try:
+        if req.status_code != 200:
+            print('Failed to perfom request to {0}'.format(url))
+            print('Error code: {0}'.format(req.status_code))
+            print('Failed request: \n{0}'.format(req.text))
+    except:
+        print('Failed request: none returned')
+    else:
+        return req.json()
 
 def check_python():
     """
@@ -219,13 +254,13 @@ def usage(destination):
     """
     Usage information
     """
-    print("[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " % (sys.argv[0], destination))
-    print("[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " % (sys.argv[0], destination))
-    print("[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination))
-    print("[note] : please take this into consideration")
-    print( "\t\t: (1) always specify https | http explicitly")
-    print( "\t\t: (2) always provide the proper directory structure where sharepoint/frontpage is installed")
-    print( "\t\t: (3) do not specify '/' at the end of url")
+    logger.info("[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " % (sys.argv[0], destination))
+    logger.info("[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " % (sys.argv[0], destination)
+    logger.info("[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination)
+    logger.info("[note] : please take this into consideration"
+    logger.info( "\t\t: (1) always specify https | http explicitly "
+    logger.info( "\t\t: (2) always provide the proper directory structure where sharepoint/frontpage is installed"
+    logger.info( "\t\t: (3) do not specify '/' at the end of url"
 
 
 def build_target(target, front_dirs=[], refine_target=[]):
@@ -282,8 +317,8 @@ def success(module_name):
     """
     Display success notification
     """
-    logger.info( "\n[+] check for HTTP codes (200) for active list of accessible files or directories (404) - Not exists | (403) - Forbidden (500) - Server Error")
-    logger.info( "\n[+] (%s) - module executed successfully\n" % module_name)
+    logger.info("\n[+] check for HTTP codes (200) for active list of accessible files or directories (404) - Not exists | (403) - Forbidden (500) - Server Error")
+    logger.info("\n[+] (%s) - module executed successfully\n" % module_name)
 
 
 def target_information(url):
@@ -377,7 +412,7 @@ def fingerprint_frontpage(name):
                 logger.info("[+] front page is tested as : windows version |  (%s) | (%d)" % (entry, info.status_code))
         except requests.RequestException:
                 logger.error("[-] failed to extract the version of frontpage from default file!")
-                pass
+            pass
 
     frontend_version = name + "/_vti_inf.html"
     try:
@@ -390,25 +425,20 @@ def fingerprint_frontpage(name):
 
     logger.info("[*] ---------------------------------------------------------------------------------------")
 
-# dump sharepoint headers for version fingerprinting
 def dump_sharepoint_headers(name):
     """
     dump sharepoint headers for version fingerprint
     """
     try:
         dump_s = _request(name)
-        logger.info("[+] configured sharepoint version is  : (%s)" % dump_s.headers['microsoftsharepointteamservices']
-)
+        logger.info("[+] configured sharepoint version is  : (%s)" % dump_s.headers['microsoftsharepointteamservices'])
     except KeyError:
         logger.error("[-] sharepoint version could not be extracted using HTTP header :  MicrosoftSharepointTeamServices")
-
     try:
         dump_f = _request(name)
         logger.info("[+] sharepoint is configured with load balancing capability : (%s)" % dump_f.headers['x-sharepointhealthscore'])
-
     except KeyError:
         logger.error("[-] sharepoint load balancing ability could not be determined using HTTP header : X-SharepointHealthScore")
-
     try:
         dump_g = _request(name)
         logger.info("[+] sharepoint is configured with explicit diagnosis (GUID based log analysis) purposes : (%s)" % dump_f.headers['sprequestguid'])
@@ -737,8 +767,10 @@ def main():
         "-v",
         "--http_fingerprint",
         type="choice",
-        choices=['ms_sharepoint',
-                 'ms_frontpage'],
+        choices=[
+            'ms_sharepoint',
+            'ms_frontpage'
+             ],
         help="<FINGERPRINT = ms_sharepoint | ms_frontpage> -- fingerprint sharepoint or frontpage based on HTTP headers",
         dest="fingerprint")
 
@@ -746,16 +778,19 @@ def main():
         "-d",
         "--dump",
         type="choice",
-        choices=['dump',
-                 'extract'],
+        choices=[
+            'dump',
+            'extract'],
         help="<DUMP = dump | extract> -- dump credentials from default sharepoint and frontpage files (configuration errors and exposed entries)",
         dest="dump")
     exploit.add_option(
         "-l",
         "--list",
         type="choice",
-        choices=['list',
-                 'index'],
+        choices=[
+                'list',
+                'index'
+                ],
         help="<DIRECTORY = list | index> -- check directory listing and permissions",
         dest="directory")
 
@@ -763,11 +798,13 @@ def main():
         "-e",
         "--exploit",
         type="choice",
-        choices=['rpc_version_check',
-                 'rpc_service_listing',
-                 'author_config_check',
-                 'rpc_file_upload',
-                 'author_remove_folder'],
+        choices=[
+            'rpc_version_check',
+            'rpc_service_listing',
+            'author_config_check',
+            'rpc_file_upload',
+            'author_remove_folder'
+            ],
         help="EXPLOIT = <rpc_version_check | rpc_service_listing | rpc_file_upload | author_config_check | author_remove_folder> -- exploit vulnerable installations by checking RPC querying, service listing and file uploading",
         dest="exploit")
 
@@ -775,8 +812,10 @@ def main():
         "-i",
         "--services",
         type="choice",
-        choices=['serv',
-                 'services'],
+        choices=[
+            'serv',
+            'services'
+             ],
         help="SERVICES = <serv | services> -- checking exposed services",
         dest="services")
 
@@ -889,7 +928,7 @@ def main():
 
         elif options.frontpage == "bin":
             build_target(target, front_bin, refine_target)
-            logger.info( "\n[+]----------------------------------------")
+            logger.info("\n[+]----------------------------------------")
             logger.info("[+] auditing frontpage '/_vti_bin/' directory")
             logger.info("[+]------------------------------------------\n")
             audit(refine_target)
@@ -906,12 +945,12 @@ def main():
 
         elif options.fingerprint == "ms_sharepoint":
             dump_sharepoint_headers(target)
-            logger.info( "\n[+] sharepoint fingerprint module completed\n")
+            logger.info("\n[+] sharepoint fingerprint module completed\n")
             return
 
         elif options.fingerprint == "ms_frontpage":
             fingerprint_frontpage(target)
-            logger.info( "\n[+] frontpage fingerprint module completed\n")
+            logger.info("\n[+] frontpage fingerprint module completed\n")
             return
 
         elif options.sharepoint == "layouts":
@@ -999,6 +1038,6 @@ def main():
     except None:
         logger.info("[*] Lulz")
         sys.exit(99)
-
+# calling main
 if __name__ == '__main__':
     main()

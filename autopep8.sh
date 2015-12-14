@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-path="./src"
+path="."
 test -z "$1" || path="$1"
 for file in ${path}/*.py; do
     echo "(pep8) >> $file"
