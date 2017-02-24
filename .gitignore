@@ -1,12 +1,11 @@
 *.py[co]
 *.log
 *.lock
-*bot.py
-*bot.cfg
+*.cfg
 *.orig
 *.egg-info
-notes
 lib
 venv
 dist
 build
+.idea
